@@ -11,7 +11,7 @@ DB_NAME = os.getenv("DB_DATABASE")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-TOTAL_READS = 10000
+TOTAL_DELETES = 10000
 TOTAL_IDS_CARREGADOS = 100000
 
 conn = psycopg2.connect(
@@ -21,11 +21,7 @@ conn = psycopg2.connect(
     password=DB_PASSWORD,
 )
 
-conn.autocommit = True
 cursor = conn.cursor()
-
-
-inicio_ids = time.time()
 
 cursor.execute(
     f"""
@@ -37,39 +33,27 @@ cursor.execute(
 
 ids = [row[0] for row in cursor.fetchall()]
 
-fim_ids = time.time()
+amostra = random.sample(ids, TOTAL_DELETES)
 
-if len(ids) < TOTAL_READS:
-    raise Exception(
-        f"Apenas {len(ids)} IDs foram carregados. "
-        f"Necessário pelo menos {TOTAL_READS}."
-    )
-
-amostra = random.sample(ids, TOTAL_READS)
-
-print(f"\nIniciando benchmark de {TOTAL_READS} leituras...")
-
-inicio_reads = time.time()
+start = time.time()
 
 for user_id in amostra:
 
     cursor.execute(
         """
-        SELECT *
-        FROM usuarios WHERE id = %s
+        DELETE FROM usuarios
+        WHERE id = %s
         """,
         (user_id,)
     )
 
-    cursor.fetchone()
+conn.commit()
 
-fim_reads = time.time()
+end = time.time()
 
-tempo_reads = fim_reads - inicio_reads
+tempo = end - start
 
-print("\n=== RESULTADO ===")
-print(f"Leituras realizadas: {TOTAL_READS}")
-print(f"Tempo total de leitura: {tempo_reads:.2f}s")
+print(f"DELETE PostgreSQL demorou: {tempo:.2f}s")
 
 cursor.close()
 conn.close()

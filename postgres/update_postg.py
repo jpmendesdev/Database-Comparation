@@ -11,7 +11,7 @@ DB_NAME = os.getenv("DB_DATABASE")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-TOTAL_READS = 10000
+TOTAL_UPDATES = 10000
 TOTAL_IDS_CARREGADOS = 100000
 
 conn = psycopg2.connect(
@@ -21,11 +21,8 @@ conn = psycopg2.connect(
     password=DB_PASSWORD,
 )
 
-conn.autocommit = True
 cursor = conn.cursor()
 
-
-inicio_ids = time.time()
 
 cursor.execute(
     f"""
@@ -37,39 +34,38 @@ cursor.execute(
 
 ids = [row[0] for row in cursor.fetchall()]
 
-fim_ids = time.time()
+print(f"IDs carregados: {len(ids)}")
 
-if len(ids) < TOTAL_READS:
-    raise Exception(
-        f"Apenas {len(ids)} IDs foram carregados. "
-        f"Necessário pelo menos {TOTAL_READS}."
-    )
+amostra = random.sample(ids, TOTAL_UPDATES)
 
-amostra = random.sample(ids, TOTAL_READS)
+print(f"Iniciando benchmark de {TOTAL_UPDATES} updates...")
 
-print(f"\nIniciando benchmark de {TOTAL_READS} leituras...")
-
-inicio_reads = time.time()
+start = time.time()
 
 for user_id in amostra:
 
-    cursor.execute(
-        """
-        SELECT *
-        FROM usuarios WHERE id = %s
-        """,
-        (user_id,)
+    novo_salario = round(
+        random.uniform(1500, 20000),
+        2
     )
 
-    cursor.fetchone()
+    cursor.execute(
+        """
+        UPDATE usuarios
+        SET salario = %s
+        WHERE id = %s
+        """,
+        (novo_salario, user_id)
+    )
 
-fim_reads = time.time()
+conn.commit()
 
-tempo_reads = fim_reads - inicio_reads
+end = time.time()
+
+tempo = end - start
 
 print("\n=== RESULTADO ===")
-print(f"Leituras realizadas: {TOTAL_READS}")
-print(f"Tempo total de leitura: {tempo_reads:.2f}s")
+print(f"Tempo total: {tempo:.2f}s")
 
 cursor.close()
 conn.close()
